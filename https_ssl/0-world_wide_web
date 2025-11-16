@@ -1,0 +1,23 @@
+#!/bin/bash
+
+get_subdomain_info() {
+  local domain=$1
+  local subdomain=$2
+  # Ignore shellcheck SC2086 as per requirements (for $subdomain.$domain)
+  dig ${subdomain}.${domain} | \
+    awk '/ANSWER SECTION:/ {getline; if ($1 != "") {printf "The subdomain %s is a %s record and points to %s\n", "'${subdomain}'", $4, $5}}'
+}
+
+if [ $# -eq 1 ]; then
+  DOMAIN=$1
+  for sub in www lb-01 web-01 web-02; do
+    get_subdomain_info "${DOMAIN}" "${sub}"
+  done
+elif [ $# -eq 2 ]; then
+  DOMAIN=$1
+  SUBDOMAIN=$2
+  get_subdomain_info "${DOMAIN}" "${SUBDOMAIN}"
+else
+  echo "Usage: $0 <domain> [subdomain]"
+  exit 1
+fi
