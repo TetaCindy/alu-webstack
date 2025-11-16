@@ -1,23 +1,32 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Script to display information about subdomains
 
-get_subdomain_info() {
-  local domain=$1
-  local subdomain=$2
-  # Ignore shellcheck SC2086 as per requirements (for $subdomain.$domain)
-  dig ${subdomain}.${domain} | \
-    awk '/ANSWER SECTION:/ {getline; if ($1 != "") {printf "The subdomain %s is a %s record and points to %s\n", "'${subdomain}'", $4, $5}}'
+# Function to query and display subdomain information
+display_subdomain_info() {
+    local subdomain=$1
+    local domain=$2
+    
+    # Use dig to query the DNS record and awk to extract the information
+    # shellcheck disable=SC2086
+    dig "$subdomain.$domain" | awk -v subdomain="$subdomain" '/ANSWER SECTION:/{getline; print "The subdomain " subdomain " is a " $4 " record and points to " $5}'
 }
 
-if [ $# -eq 1 ]; then
-  DOMAIN=$1
-  for sub in www lb-01 web-01 web-02; do
-    get_subdomain_info "${DOMAIN}" "${sub}"
-  done
-elif [ $# -eq 2 ]; then
-  DOMAIN=$1
-  SUBDOMAIN=$2
-  get_subdomain_info "${DOMAIN}" "${SUBDOMAIN}"
+# Main script logic
+domain=$1
+subdomain=$2
+
+if [ -z "$domain" ]; then
+    echo "Error: domain parameter is mandatory"
+    exit 1
+fi
+
+# If subdomain is specified, display only that subdomain
+if [ -n "$subdomain" ]; then
+    display_subdomain_info "$subdomain" "$domain"
 else
-  echo "Usage: $0 <domain> [subdomain]"
-  exit 1
+    # Display information for default subdomains in specific order
+    display_subdomain_info "www" "$domain"
+    display_subdomain_info "lb-01" "$domain"
+    display_subdomain_info "web-01" "$domain"
+    display_subdomain_info "web-02" "$domain"
 fi
