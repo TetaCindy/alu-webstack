@@ -1,32 +1,35 @@
 #!/usr/bin/env bash
-# Script to display information about subdomains
+# Script that displays information about subdomains
 
-# Function to query and display subdomain information
-display_subdomain_info() {
-    local subdomain=$1
-    local domain=$2
+get_subdomain_info() {
+    local domain="$1"
+    local subdomain="$2"
     
-    # Use dig to query the DNS record and awk to extract the information
-    # shellcheck disable=SC2086
-    dig "$subdomain.$domain" | awk -v subdomain="$subdomain" '/ANSWER SECTION:/{getline; print "The subdomain " subdomain " is a " $4 " record and points to " $5}'
+    # Use dig to query the subdomain and extract record type and destination
+    local dig_output
+    dig_output=$(dig "$subdomain.$domain" | grep -A1 'ANSWER SECTION:' | tail -n1)
+    
+    # Extract record type and IP using awk
+    local record_type
+    local destination
+    record_type=$(echo "$dig_output" | awk '{print $4}')
+    destination=$(echo "$dig_output" | awk '{print $5}')
+    
+    # Display the information
+    echo "The subdomain $subdomain is a $record_type record and points to $destination"
 }
 
 # Main script logic
-domain=$1
-subdomain=$2
+domain="$1"
+subdomain="$2"
 
-if [ -z "$domain" ]; then
-    echo "Error: domain parameter is mandatory"
-    exit 1
-fi
-
-# If subdomain is specified, display only that subdomain
-if [ -n "$subdomain" ]; then
-    display_subdomain_info "$subdomain" "$domain"
+if [ -z "$subdomain" ]; then
+    # If no subdomain specified, display info for default subdomains
+    get_subdomain_info "$domain" "www"
+    get_subdomain_info "$domain" "lb-01"
+    get_subdomain_info "$domain" "web-01"
+    get_subdomain_info "$domain" "web-02"
 else
-    # Display information for default subdomains in specific order
-    display_subdomain_info "www" "$domain"
-    display_subdomain_info "lb-01" "$domain"
-    display_subdomain_info "web-01" "$domain"
-    display_subdomain_info "web-02" "$domain"
+    # Display info for the specified subdomain
+    get_subdomain_info "$domain" "$subdomain"
 fi
